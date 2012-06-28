@@ -1,5 +1,6 @@
 package org.zhengyang.kaggle.prediction;
 
+import org.apache.log4j.Logger;
 import org.zhengyang.kaggle.query.Query;
 import org.zhengyang.kaggle.similarity.Similarity;
 
@@ -11,6 +12,7 @@ import com.google.inject.Inject;
  *
  */
 public class WeightedSumPrediction implements PredictionVal {
+  static Logger logger = Logger.getLogger(WeightedSumPrediction.class);
   private Similarity similarityCalculator;
   private Query queryEngine;
   
@@ -21,8 +23,11 @@ public class WeightedSumPrediction implements PredictionVal {
   }
 
   public double getPredictionVal(String userId, String songId) {
+    // logger.debug("Calculating prediction value for user:" + userId + ", and song:" + songId);
     String[] listenedSongs = queryEngine.listenedSongs(userId);
-    return numerator(songId, userId, listenedSongs) / denominator(songId, listenedSongs);
+    double val =  numerator(songId, userId, listenedSongs) / denominator(songId, listenedSongs);
+    // logger.debug("Calculating prediction value finished.");
+    return val;
   }
   
   protected double numerator(String songId, String userId, String[] listenedSongs) {

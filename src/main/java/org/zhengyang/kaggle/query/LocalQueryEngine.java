@@ -9,11 +9,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.log4j.Logger;
 import org.zhengyang.kaggle.utils.Utils;
 
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.inject.Inject;
+import com.google.inject.internal.util.Lists;
 
 /**
  * The class simplely load all the data into memory as maps and sets.
@@ -23,6 +25,8 @@ import com.google.inject.Inject;
 // TODO : add exceptions when cannot find a song/user by its id
 
 public class LocalQueryEngine implements Query {
+  static Logger logger = Logger.getLogger(LocalQueryEngine.class);
+  
   protected Map<String, List<String>> songUserMap      = Maps.newHashMap();
   protected Map<String, List<String>> userSongMap      = Maps.newHashMap();
   // maps <userId, songId> pair to the number of songs that has been listened by
@@ -33,18 +37,19 @@ public class LocalQueryEngine implements Query {
   protected Set<String>               allSongs         = Sets.newHashSet();
   // save all users in memory to make the query faster
   protected Set<String>               allUsers         = Sets.newHashSet();
-  
+  // save most popular songs in memory to make the query faster
+  protected List<String>              mostPopular      = Lists.newArrayList();
   private boolean                     started          = false;
-  private String                      path             = null;
+  private String trainingDataPath                      = null;
 
   @Inject
-  public LocalQueryEngine(String path) {
-    this.path = path;
+  public LocalQueryEngine(String trainingDataPath) {
+    this.trainingDataPath = trainingDataPath;
   }
   
-  // TODO : write test
   public void start() throws IOException {
-    BufferedReader sb = new BufferedReader(new FileReader(path));
+    logger.info("Starting local query engine.");
+    BufferedReader sb = new BufferedReader(new FileReader(trainingDataPath));
     String line = null;
     while ((line = sb.readLine()) != null) {
       String[] arr = line.split("\\s+");
@@ -63,11 +68,25 @@ public class LocalQueryEngine implements Query {
       allUsers.add(userId);
     }
     started = true;
+    logger.info("Local query engine started.");
+    logger.info("Songs number: " + allSongs.size());
+    logger.info("Users number: " + allUsers.size());
     sb.close();
   }
   
   public boolean hasStarted() {
     return started;
+  }
+  
+  /**
+   * Clear all buffers
+   */
+  public void close() {
+    songUserMap      = Maps.newHashMap();
+    userSongMap      = Maps.newHashMap();
+    userSongCountMap = Maps.newHashMap();
+    allSongs         = Sets.newHashSet();
+    allUsers         = Sets.newHashSet();
   }
 
   private void addEntryToUserSongMap(String userId, String songId) {
@@ -79,29 +98,33 @@ public class LocalQueryEngine implements Query {
     }
   }
 
-  private void addEntryToSongUserMap(String userId, String songId) {
+  private void addEntryToSongUserMap(String userId, String songId) {    
     if (songUserMap.containsKey(songId)) {
       songUserMap.get(songId).add(userId);
     } else {
       songUserMap.put(songId, new ArrayList<String>());
       songUserMap.get(songId).add(userId);
-    }
+    }    
   }
 
-  // TODO : add test
   public String[] hasNotListened(String userId) {
     Set<String> temp = Sets.newHashSet(allSongs);
     temp.removeAll(userSongMap.get(userId));
     return temp.toArray(new String[0]);
   }
 
-  // TODO : add test
   public String[] mostPopularSongs(int number) {
+    if (mostPopular.size() == number) {
+      return mostPopular.toArray(new String[0]);
+    }
     Map<String, Integer> songCountMap = Maps.newHashMap();
     for (String songId : allSongs) {
       songCountMap.put(songId, songUserMap.get(songId).size());
     }
-    return Arrays.copyOf(Utils.getSortedKeys(songCountMap), number);
+    String[] sortedKeys = Utils.getSortedKeys(songCountMap);
+    int length = sortedKeys.length < number ? sortedKeys.length : number;
+    mostPopular = Arrays.asList(Arrays.copyOf(Utils.getSortedKeys(songCountMap), length));
+    return mostPopular.toArray(new String[0]);
   }
 
   public String[] getListenersOf(String songId) {
