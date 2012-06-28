@@ -1,0 +1,6 @@
+user-tag-1 song-1 1
+user-tag-2 song-2 2
+user-tag-1 song-2 2
+user-tag-3 song-1 1
+user-tag-4 song-5 1
+user-tag-2 song-3 2
