@@ -24,6 +24,7 @@ public class CountSimilarity implements Similarity {
     this.queryEngine = queryEngine;
   }
 
+  // TODO : !!!! BOTTLE NECK !!!!
   public double getSimilarity(String song1, String song2) {    
     if (!similaritySongMap.containsKey(song1 + song2)) {
       int count = 0;
