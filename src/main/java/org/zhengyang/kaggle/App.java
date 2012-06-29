@@ -24,6 +24,12 @@ public class App {
   private Master m;
   private List<Worker> workers = Lists.newArrayList();
   
+  /**
+   * 
+   * @param masterInterval the check interval of the master thread
+   * @param numberOfPopSongs number of popular songs to check
+   * @param numberOfSongRecommended number of songs to recommend
+   */
   public App(int masterInterval, int numberOfPopSongs, int numberOfSongRecommended) {    
     this.masterInterval = masterInterval;
     this.numberOfPopSongs = numberOfPopSongs;

@@ -50,4 +50,6 @@ public interface Query {
   double getRating(String userId, String songId);
   
   String[] possibleRecommendation(String userId, int numberOfPopSongs);
+  
+  long numberOfCommonAudience(String song1, String song2);
 }

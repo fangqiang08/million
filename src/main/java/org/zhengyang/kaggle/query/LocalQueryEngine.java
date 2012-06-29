@@ -39,6 +39,7 @@ public class LocalQueryEngine implements Query {
   protected Set<String>               allUsers         = Sets.newHashSet();
   // save most popular songs in memory to make the query faster
   protected List<String>              mostPopular      = Lists.newArrayList();
+  protected Map<String, Integer> songSongMatrix        = Maps.newHashMap();
   private boolean                     started          = false;
   private String trainingDataPath                      = null;
 
@@ -66,6 +67,8 @@ public class LocalQueryEngine implements Query {
       allSongs.add(songId);
       // add user to allUsers set
       allUsers.add(userId);
+      // build song song matrix
+      buildSongSongMatrix();
     }
     started = true;
     logger.info("Local query engine started.");
@@ -74,6 +77,10 @@ public class LocalQueryEngine implements Query {
     sb.close();
   }
   
+  private void buildSongSongMatrix() {
+    // TODO : figure out a way to save it
+  }
+
   public boolean hasStarted() {
     return started;
   }
@@ -134,6 +141,10 @@ public class LocalQueryEngine implements Query {
   public String[] allUsers() {
     return allUsers.toArray(new String[0]);
   }
+  
+  public String[] allSongs() {
+    return allSongs.toArray(new String[0]);
+  }
 
   public String[] listenedSongs(String userId) {
     return userSongMap.get(userId).toArray(new String[0]);
@@ -162,5 +173,10 @@ public class LocalQueryEngine implements Query {
     Set<String> listened      = Sets.newHashSet(listenedSongs(userId));
     popularSongs.removeAll(listened);
     return popularSongs.toArray(new String[0]);
+  }
+
+  public long numberOfCommonAudience(String song1, String song2) {
+    // TODO : build the song-song matrix
+    return 0;
   }
 }
