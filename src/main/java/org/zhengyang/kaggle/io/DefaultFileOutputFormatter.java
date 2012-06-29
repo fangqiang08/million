@@ -30,6 +30,10 @@ public class DefaultFileOutputFormatter implements OutputFormatter {
   public void writeLine(String[] recommendation) throws IOException {
     out.write(joiner.join(recommendation) + "\n");
   }
+  
+  public String formatRecommendation(String[] recommendation) {
+    return joiner.join(recommendation);
+  }
 
   public void close() throws IOException {
     if (out != null) {

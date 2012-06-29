@@ -18,8 +18,11 @@ import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.assistedinject.FactoryModuleBuilder;
 
-public class DefaultCollaborateFilteringModule extends AbstractModule {
-
+/**
+ * @author zhengyang.feng2011@gmail.com
+ * @creation Jun 29, 2012
+ */
+public class JedisTestCFModule extends AbstractModule {
   @Override
   protected void configure() {
     bind(Similarity.class).to(CountSimilarity.class).in(Singleton.class);
@@ -27,18 +30,19 @@ public class DefaultCollaborateFilteringModule extends AbstractModule {
     bind(OutputFormatter.class).to(DefaultFileOutputFormatter.class).in(Singleton.class);
     install(new FactoryModuleBuilder().build(CollaborativeFilterFactory.class));
   }
-  
-  @Provides @Singleton
+
+  @Provides
+  @Singleton
   Query providesLocalQueryEngine() throws IOException {
-//    return new LocalQueryEngine("data/kaggle_visible_evaluation_triplets.txt");
+    // return new LocalQueryEngine("data/kaggle_visible_evaluation_triplets.txt");
     Query queryEngine = new LocalQueryEngine("data/small_triplets2.txt");
     queryEngine.start();
     return queryEngine;
   }
-  
-  @Provides @Singleton
+
+  @Provides
   JedisConnector providesJedisConnector() {
-    JedisConnector jedisConnector = new JedisConnector("localhost", 6379);
+    JedisConnector jedisConnector = new JedisConnector("127.0.0.1", 6379);
     return jedisConnector;
   }
 }

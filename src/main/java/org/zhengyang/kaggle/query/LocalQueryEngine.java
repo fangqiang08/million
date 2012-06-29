@@ -151,4 +151,16 @@ public class LocalQueryEngine implements Query {
     }
     return 0.0;
   }
+  
+  /**
+   * Possible recommendation: 1, popular songs 2, user has not listened
+   * @param userId
+   * @return array of possible recommended songs' id
+   */
+  public String[] possibleRecommendation(String userId, int numberOfPopSongs) {
+    Set<String> popularSongs = Sets.newHashSet(mostPopularSongs(numberOfPopSongs));    
+    Set<String> listened      = Sets.newHashSet(listenedSongs(userId));
+    popularSongs.removeAll(listened);
+    return popularSongs.toArray(new String[0]);
+  }
 }

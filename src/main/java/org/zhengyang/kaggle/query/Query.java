@@ -48,4 +48,6 @@ public interface Query {
    * @return 
    */
   double getRating(String userId, String songId);
+  
+  String[] possibleRecommendation(String userId, int numberOfPopSongs);
 }

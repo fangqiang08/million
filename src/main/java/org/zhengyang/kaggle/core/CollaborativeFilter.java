@@ -2,7 +2,6 @@ package org.zhengyang.kaggle.core;
 
 import java.io.IOException;
 import java.util.Map;
-import java.util.Set;
 
 import org.apache.log4j.Logger;
 import org.zhengyang.kaggle.io.OutputFormatter;
@@ -11,7 +10,6 @@ import org.zhengyang.kaggle.query.Query;
 import org.zhengyang.kaggle.utils.Utils;
 
 import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
 import com.google.inject.Inject;
 import com.google.inject.assistedinject.Assisted;
 
@@ -53,9 +51,9 @@ public class CollaborativeFilter {
     for (String userId : queryEngine.allUsers()) {
       logger.debug("Start recommending songs to " + userId);
       Map<String, Double> songScoreMap = Maps.newHashMap();
-      logger.debug("Number of possbile songs for user " + userId + ": " + possibleRecommendation(userId).length);      
+      logger.debug("Number of possbile songs for user " + userId + ": " + queryEngine.possibleRecommendation(userId, numberOfPopSongs).length);      
       logger.debug("Calculating prediction values for possible songs.");
-      for (String song : possibleRecommendation(userId)) {   
+      for (String song : queryEngine.possibleRecommendation(userId, numberOfPopSongs)) {   
         double score = predictionValCalculator.getPredictionVal(userId, song);        
         songScoreMap.put(song, score);
       }
@@ -77,18 +75,6 @@ public class CollaborativeFilter {
   
   public void output(String path) throws IOException {
     outputFormatter.write(userRecommendation, queryEngine.allUsers());
-  }
-  
-  /**
-   * Possible recommendation: 1, popular songs 2, user has not listened
-   * @param userId
-   * @return array of possible recommended songs' id
-   */
-  private String[] possibleRecommendation(String userId) {
-    Set<String> popularSongs = Sets.newHashSet(queryEngine.mostPopularSongs(numberOfPopSongs));    
-    Set<String> listened      = Sets.newHashSet(queryEngine.listenedSongs(userId));
-    popularSongs.removeAll(listened);
-    return popularSongs.toArray(new String[0]);
   }
 }
  
