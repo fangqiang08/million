@@ -9,7 +9,7 @@ import com.google.common.base.Joiner;
 import com.google.inject.Inject;
 
 /**
- * @author zhengyang.feng2011@gmail.com
+ * @author zhengyang.feng2011@gmail.com (Zhengyang Feng)
  * @creation Jun 28, 2012
  */
 public class DefaultFileOutputFormatter implements OutputFormatter {
@@ -29,6 +29,7 @@ public class DefaultFileOutputFormatter implements OutputFormatter {
 
   public void writeLine(String[] recommendation) throws IOException {
     out.write(joiner.join(recommendation) + "\n");
+    out.flush();
   }
 
   public void close() throws IOException {

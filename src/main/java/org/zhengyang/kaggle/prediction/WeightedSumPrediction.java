@@ -25,29 +25,17 @@ public class WeightedSumPrediction implements PredictionVal {
   public double getPredictionVal(String userId, String songId) {
     // logger.debug("Calculating prediction value for user:" + userId + ", and song:" + songId);
     String[] listenedSongs = queryEngine.listenedSongs(userId);
-    double val =  numerator(songId, userId, listenedSongs) / denominator(songId, listenedSongs);
-    // logger.debug("Calculating prediction value finished.");
-    return val;
-  }
-  
-  protected double numerator(String songId, String userId, String[] listenedSongs) {
-    double sum = 0;
+    double sumOfNumerator = 0;
+    double sumOfDenominator = 0;
     for (String songHasListened : listenedSongs) {
       double similarity = similarityCalculator.getSimilarity(songId, songHasListened);
       double rating = queryEngine.getRating(userId, songHasListened);
-      sum += similarity * rating;
+      sumOfNumerator += similarity * rating;
+      sumOfDenominator += abs(similarity);
     }
-    return sum;
+    // logger.debug("Calculating prediction value finished.");
+    return sumOfNumerator / sumOfDenominator;   
   }
-  
-  protected double denominator(String songId, String[] listenedSongs) {
-    double sum = 0;
-    for (String songHasListened : listenedSongs) {
-      double similarity = similarityCalculator.getSimilarity(songId, songHasListened);
-      sum += abs(similarity);
-    }
-    return sum;
-  }
-  
+ 
   protected double abs(double a) { return a > 0? a : -a; }
 }
