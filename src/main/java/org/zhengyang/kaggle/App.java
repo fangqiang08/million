@@ -16,10 +16,10 @@ public class App {
   static Logger logger = Logger.getLogger(App.class);
   Injector injector = Guice.createInjector(new JedisTestCFModule());
   
-  private int workQSize = 5;
+  private int workQSize = 20;
   private int masterInterval = 2000;
-  private int numberOfPopSongs = 3;
-  private int numberOfSongRecommended = 1;
+  private int numberOfPopSongs = 600;
+  private int numberOfSongRecommended = 500;
   
   private Master m;
   private List<Worker> workers = Lists.newArrayList();
@@ -57,9 +57,10 @@ public class App {
     m.setInterval(masterInterval);
     m.clearAllQueues();
     m.init();
-    workers = hireWorkers(3);
+    workers = hireWorkers(4);
     startWorkers(workers);
     m.action();
+    logger.info("Stopping workers...");
     stopWorkers(workers);
   }
   
@@ -76,7 +77,8 @@ public class App {
   }
 
   public static void main(String[] args) throws IOException, InterruptedException {
-    new App(2000, 5, 1).run();
+    // params : master interval, num of pop songs, num of songs to recommend
+    new App(2000, 1000, 500).run();
   }
   
   public void setWorkQSize(int workQSize) {

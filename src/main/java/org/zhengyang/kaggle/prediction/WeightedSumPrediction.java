@@ -27,9 +27,9 @@ public class WeightedSumPrediction implements PredictionVal {
     String[] listenedSongs = queryEngine.listenedSongs(userId);
     double sumOfNumerator = 0;
     double sumOfDenominator = 0;
-    for (String songHasListened : listenedSongs) {
-      double similarity = similarityCalculator.getSimilarity(songId, songHasListened);
-      double rating = queryEngine.getRating(userId, songHasListened);
+    for (String listenedSong : listenedSongs) {
+      double similarity = similarityCalculator.getSimilarity(songId, listenedSong);
+      double rating = queryEngine.getRating(userId, listenedSong);
       sumOfNumerator += similarity * rating;
       sumOfDenominator += abs(similarity);
     }

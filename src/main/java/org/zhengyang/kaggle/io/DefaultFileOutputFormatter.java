@@ -5,6 +5,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Map;
 
+import org.apache.log4j.Logger;
+import org.zhengyang.kaggle.App;
+
 import com.google.common.base.Joiner;
 import com.google.inject.Inject;
 
@@ -13,6 +16,7 @@ import com.google.inject.Inject;
  * @creation Jun 28, 2012
  */
 public class DefaultFileOutputFormatter implements OutputFormatter {
+  static Logger logger = Logger.getLogger(DefaultFileOutputFormatter.class);
   private BufferedWriter out;
   private Joiner joiner = Joiner.on(" ").skipNulls();
   
@@ -33,7 +37,10 @@ public class DefaultFileOutputFormatter implements OutputFormatter {
   }
   
   public String formatRecommendation(String[] recommendation) {
-    return joiner.join(recommendation);
+    logger.debug("Formattring " + recommendation.length + " songs to one line ----");
+    String formatted = joiner.join(recommendation);
+    logger.debug(formatted);
+    return formatted;
   }
 
   public void close() throws IOException {

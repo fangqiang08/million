@@ -10,7 +10,8 @@ import org.junit.Test;
 public class LocalQueryEngineTest {
   
   String testFilePath = "data/tiny_triplets.txt";
-  LocalQueryEngine localQueryEngine = new LocalQueryEngine(testFilePath);
+  String testColistenedMatrixFilePath = "data/tiny_triplets_colistened.txt";
+  LocalQueryEngine localQueryEngine = new LocalQueryEngine(testFilePath, testColistenedMatrixFilePath, 5);
 
   @Test
   public void testStart() throws IOException {

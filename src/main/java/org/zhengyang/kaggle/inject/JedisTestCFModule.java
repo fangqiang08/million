@@ -25,9 +25,9 @@ import com.google.inject.assistedinject.FactoryModuleBuilder;
 public class JedisTestCFModule extends AbstractModule {
   @Override
   protected void configure() {
-    bind(Similarity.class).to(CountSimilarity.class).in(Singleton.class);
-    bind(PredictionVal.class).to(WeightedSumPrediction.class).in(Singleton.class);
-    bind(OutputFormatter.class).to(DefaultFileOutputFormatter.class).in(Singleton.class);
+    bind(Similarity.class).to(CountSimilarity.class);
+    bind(PredictionVal.class).to(WeightedSumPrediction.class);
+    bind(OutputFormatter.class).to(DefaultFileOutputFormatter.class);
     install(new FactoryModuleBuilder().build(CollaborativeFilterFactory.class));
   }
 
@@ -35,7 +35,7 @@ public class JedisTestCFModule extends AbstractModule {
   @Singleton
   Query providesLocalQueryEngine() throws IOException {
     // return new LocalQueryEngine("data/kaggle_visible_evaluation_triplets.txt");
-    Query queryEngine = new LocalQueryEngine("data/small_triplets2.txt");
+    Query queryEngine = new LocalQueryEngine("data/kaggle_visible_evaluation_triplets.txt", "data/kaggle_visible_evaluation_colistened.txt", 2000);
     queryEngine.start();
     return queryEngine;
   }

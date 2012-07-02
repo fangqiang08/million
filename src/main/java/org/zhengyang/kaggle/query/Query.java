@@ -51,5 +51,15 @@ public interface Query {
   
   String[] possibleRecommendation(String userId, int numberOfPopSongs);
   
+  /**
+   * Calculate the number of common audience of the two songs.
+   * NOTE that this method will ONLY CALCULATE songs in co-listened matrix, if a song is not in co-listen matrix, its similarity to any song will be 0.
+   * This is for computing efficiency.
+   * 
+   * @param song1
+   * @param song2
+   * @param numOfPopSongsCondidered
+   * @return
+   */
   long numberOfCommonAudience(String song1, String song2);
 }

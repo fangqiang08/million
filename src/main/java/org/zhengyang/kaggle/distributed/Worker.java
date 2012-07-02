@@ -1,6 +1,8 @@
 package org.zhengyang.kaggle.distributed;
 
+import java.util.Arrays;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.log4j.Logger;
 import org.zhengyang.kaggle.inject.JedisTestCFModule;
@@ -12,6 +14,7 @@ import org.zhengyang.kaggle.utils.Utils;
 import com.google.common.collect.Maps;
 import com.google.inject.Guice;
 import com.google.inject.Inject;
+import com.google.inject.internal.util.Sets;
 
 /**
  * @author zhengyang.feng2011@gmail.com
@@ -39,6 +42,7 @@ public class Worker implements Runnable {
   }
   
   public void setNumberOfPopSongs(int numberOfPopSongs) {
+    logger.debug("set num of pop songs:" + numberOfPopSongs);
     this.numberOfPopSongs = numberOfPopSongs;
   }
   
@@ -56,12 +60,28 @@ public class Worker implements Runnable {
       }
       String userId = jedisConnector.jedis().blpop(0, Constants.WORKING_Q).get(1);
       logger.info("Get task: " + userId + ", start computing.");
-      String result = outputFormatter.formatRecommendation(makeRecommendation(userId));
-      logger.info("Finished computing for task: " + userId + ", saving it to database");;
+      String[] recommendations = makeRecommendation(userId);
+      if (recommendations.length < numberOfSongRecommended) {
+        logger.warn("Need " + numberOfSongRecommended + " songs, only have " + recommendations.length + " , will pick some from TopN list...");
+        recommendations = getRecommendationsWithPopSongs(recommendations, numberOfSongRecommended);
+      }
+      String result = outputFormatter.formatRecommendation(recommendations);
+      logger.info("Finished recommending " + recommendations.length  + " songs for user: " + userId + ", saving it to database");;
       jedisConnector.jedis().lpush(Constants.RESULT_KEY_Q, userId);
       jedisConnector.jedis().hset(Constants.RESULT_HASH, userId, result);
     }
     logger.info("Worker stopped.");
+  }
+
+  private String[] getRecommendationsWithPopSongs(String[] recommendations, int numberOfSongRecommended) {
+    Set<String> rec = Sets.newHashSet();
+    rec.addAll(Arrays.asList(recommendations));
+    for (String popSong : queryEngine.mostPopularSongs(numberOfPopSongs)) {
+      if (rec.size() == numberOfSongRecommended)
+        break;
+      rec.add(popSong);
+    }
+    return rec.toArray(new String[0]);
   }
   
   public void stop() {
@@ -73,11 +93,13 @@ public class Worker implements Runnable {
    * @return
    */
   private String[] makeRecommendation(String userId) {
+    logger.debug("num of pop songs: " + numberOfPopSongs);
     Map<String, Double> songScoreMap = Maps.newHashMap();
     for (String song : queryEngine.possibleRecommendation(userId, numberOfPopSongs)) {   
       double score = predictionValCalculator.getPredictionVal(userId, song);        
       songScoreMap.put(song, score);
     }
+    // TODO : a bug here, recommendation array has a lot of null values
     String[] recommendation = Utils.getTopElementsOf(Utils.getSortedKeys(songScoreMap), numberOfSongRecommended);
     return recommendation;
   }

@@ -67,13 +67,16 @@ public class Master {
   }
   
   public void action() throws InterruptedException {
+    // TODO : the master should check the result Q first, and decided what remained to be computing
     run();
     while (!validate()) {
       List<String> unhandledTasks = Lists.newArrayList();
       unhandledTasks.addAll(Arrays.asList(queryEngine.allUsers()));
       List<String> finishedTaskKeys = jedisConnector.jedis().lrange(Constants.RESULT_KEY_Q, 0, -1);
       unhandledTasks.removeAll(finishedTaskKeys);
-      logger.info("There are " + unhandledTasks.size() + " tasks failed, adding them back to REMAINING_WORK_Q");
+      logger.info("There are " + unhandledTasks.size() + " task(s) failed, adding them back to REMAINING_WORK_Q");
+      logger.info("Removing the failed tasks from RESULT_KEY_Q");
+      // TODO : removing them from RESULT_KEY_Q
       jedisConnector.jedis().lpush(Constants.REMAINING_TASK_Q, unhandledTasks.toArray(new String[0]));
       run();
     }
@@ -107,14 +110,20 @@ public class Master {
         logger.info("Finished running, will perform validation.");
         break;
       }
-      logger.info("Will rest for " + interval + " milliseconds.");
+      logger.info("Will rest for " + interval + " milliseconds. Remaining task: " + jedisConnector.jedis().llen(Constants.REMAINING_TASK_Q));
       Thread.sleep(interval);
     }  
   }
   
   protected boolean validate() {
-    logger.debug("Start validation of result...");
-    return jedisConnector.jedis().llen(Constants.RESULT_KEY_Q) == jedisConnector.jedis().llen(Constants.TASK_RECORD_Q);
+    logger.info("Start validation of result...");
+    long numOfResult = jedisConnector.jedis().llen(Constants.RESULT_KEY_Q);
+    long numOfRecord = jedisConnector.jedis().llen(Constants.TASK_RECORD_Q);
+    logger.info("Number of result is :" + numOfResult + ", and number of task records is: " + numOfRecord);
+    if (numOfResult == numOfRecord) {
+      logger.info("Validation passed!!");
+    }   
+    return numOfResult == numOfRecord;
   }
   
   public static void main(String[] args) throws InterruptedException {

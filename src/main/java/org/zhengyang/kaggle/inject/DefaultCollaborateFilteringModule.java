@@ -31,7 +31,7 @@ public class DefaultCollaborateFilteringModule extends AbstractModule {
   @Provides @Singleton
   Query providesLocalQueryEngine() throws IOException {
 //    return new LocalQueryEngine("data/kaggle_visible_evaluation_triplets.txt");
-    Query queryEngine = new LocalQueryEngine("data/small_triplets2.txt");
+    Query queryEngine = new LocalQueryEngine("data/small_triplets2.txt", "data/small_triplets2_colistened.txt", 500);
     queryEngine.start();
     return queryEngine;
   }

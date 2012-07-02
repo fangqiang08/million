@@ -13,8 +13,18 @@ public final class Utils {
   
   private Utils() {}
   
+  /**
+   * Return topN elements of the array, if the array doesn't have N elements, return the array itself.
+   * @param arr
+   * @param topN
+   * @return String[] array
+   */
   public static String[] getTopElementsOf(String[] arr, int topN) {
-    return Arrays.copyOf(arr, topN);
+    return Arrays.copyOf(arr, min(arr.length, topN));
+  }
+  
+  private static int min(int a, int b) {
+    return a < b ? a : b;
   }
 
   /**
