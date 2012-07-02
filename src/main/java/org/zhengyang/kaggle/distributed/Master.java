@@ -26,9 +26,8 @@ public class Master {
   
   private Query queryEngine;
   private JedisConnector jedisConnector;
-  private long workQSize = 500;
-  
-  private long interval = 2000;
+  public long workQSize = 500;  
+  public long interval = 2000;
   
   @Inject
   public Master(Query queryEngine, JedisConnector jedisConnector) {

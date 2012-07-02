@@ -26,8 +26,8 @@ public class Worker implements Runnable {
   private JedisConnector jedisConnector;
   private PredictionVal predictionValCalculator;
   private OutputFormatter outputFormatter;
-  private int numberOfPopSongs = 1000;
-  private int numberOfSongRecommended = 2;
+  public int numberOfPopSongs = 1000;
+  public int numberOfSongRecommended = 2;
   private boolean stop = false;
   
   @Inject

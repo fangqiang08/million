@@ -35,7 +35,7 @@ public class JedisTestCFModule extends AbstractModule {
   @Singleton
   Query providesLocalQueryEngine() throws IOException {
     // return new LocalQueryEngine("data/kaggle_visible_evaluation_triplets.txt");
-    Query queryEngine = new LocalQueryEngine("data/kaggle_visible_evaluation_triplets.txt", "data/kaggle_visible_evaluation_colistened.txt", 2000);
+    Query queryEngine = new LocalQueryEngine("data/kaggle_visible_evaluation_triplets.txt", "data/derived/kaggle_visible_evaluation_colistened.txt", 0, "data/origin/kaggle_songs.txt");
     queryEngine.start();
     return queryEngine;
   }

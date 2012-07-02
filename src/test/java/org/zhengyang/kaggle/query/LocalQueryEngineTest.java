@@ -11,7 +11,7 @@ public class LocalQueryEngineTest {
   
   String testFilePath = "data/tiny_triplets.txt";
   String testColistenedMatrixFilePath = "data/tiny_triplets_colistened.txt";
-  LocalQueryEngine localQueryEngine = new LocalQueryEngine(testFilePath, testColistenedMatrixFilePath, 5);
+  LocalQueryEngine localQueryEngine = new LocalQueryEngine(testFilePath, testColistenedMatrixFilePath, 5, "data/origin/kaggle_songs.txt");
 
   @Test
   public void testStart() throws IOException {

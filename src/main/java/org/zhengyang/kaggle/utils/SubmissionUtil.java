@@ -6,7 +6,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -80,13 +79,6 @@ public class SubmissionUtil {
   public static void main(String[] args) throws IOException {
     SubmissionUtil util = Guice.createInjector(new JedisTestCFModule()).getInstance(SubmissionUtil.class);
     util.init("data/kaggle_songs.txt", "data/kaggle_users.txt");
-    util.generateResult("data/2012630/result.csv");
-//    Joiner joiner = Joiner.on(",").skipNulls();
-//    System.out.println(joiner.join(Arrays.asList(0,1,2,3,4,4,5,5,6,7)));
-//    BufferedReader br = new BufferedReader(new FileReader(new File("data/2012630/result.csv")));
-//    br.readLine();
-//    String line = br.readLine();
-//    System.out.println(line);
-//    System.out.println("length:" + line.split(",").length);
+    util.generateResult("data/20120702/result.csv");
   }
 }

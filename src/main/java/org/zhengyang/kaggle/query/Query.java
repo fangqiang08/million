@@ -62,4 +62,8 @@ public interface Query {
    * @return
    */
   long numberOfCommonAudience(String song1, String song2);
+  
+  int getIntegerIdOfSong(String hashTag);
+  
+  String getSongTagOfId(int id);
 }

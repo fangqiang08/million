@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.util.Map;
 
 import org.apache.log4j.Logger;
-import org.zhengyang.kaggle.App;
 
 import com.google.common.base.Joiner;
 import com.google.inject.Inject;

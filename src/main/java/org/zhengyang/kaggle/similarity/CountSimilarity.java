@@ -13,7 +13,7 @@ import com.google.inject.Inject;
  */
 public class CountSimilarity implements Similarity {
   private Query queryEngine;
-  private static double base = 5;
+  private static double base = 1000;
   
   @Inject
   public CountSimilarity(Query queryEngine) {
