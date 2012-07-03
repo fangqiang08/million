@@ -1,11 +1,15 @@
 package org.zhengyang.kaggle.query;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 
 import org.junit.Test;
+
+import com.google.inject.internal.util.Lists;
 
 public class LocalQueryEngineTest {
   
@@ -68,8 +72,13 @@ public class LocalQueryEngineTest {
     localQueryEngine.start();
     assertTrue(localQueryEngine.hasStarted());
     double tolerance = 0.001;
-    assertEquals(2.5, localQueryEngine.getRating("user-tag-1", "song-1"), tolerance);
-    assertEquals(4.0, localQueryEngine.getRating("user-tag-1", "song-2"), tolerance);
+    assertEquals(1.1, localQueryEngine.getRating("user-tag-1", "song-1"), tolerance);
+    assertEquals(1.2, localQueryEngine.getRating("user-tag-1", "song-2"), tolerance);
     assertEquals(0.0, localQueryEngine.getRating("user-tag-1", "song-3"), tolerance);
+  }
+  
+  @Test
+  public void testGetCombinationsOf() {
+    // TODO
   }
 }

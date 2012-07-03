@@ -59,17 +59,17 @@ public class LocalQueryEngine implements Query {
   
   /**
    * 
-   * @param trainingDataPath
-   * @param colistenedMatrixFilePath
+   * @param tripletPath the userId, songId, song count file path
+   * @param colistenedMatrixFilePath the place to save the colistened file
    * @param sizeOfColistenedMatrix 0 means all songs
    * @param songIndexFilePath
    */
   @Inject
-  public LocalQueryEngine(String trainingDataPath, 
+  public LocalQueryEngine(String tripletPath, 
       String colistenedMatrixFilePath, 
       int sizeOfColistenedMatrix, 
       String songIndexFilePath) {
-    this.trainingDataPath = trainingDataPath;
+    this.trainingDataPath = tripletPath;
     this.colistenedMatrixFilePath = colistenedMatrixFilePath;
     this.sizeOfColistenedMatrix = sizeOfColistenedMatrix;
     this.songIndexFilePath = songIndexFilePath;
@@ -163,7 +163,7 @@ public class LocalQueryEngine implements Query {
     long count = 0;
     long total = 0;
     String[] songs = null;
-    // decide how many songs we need to consider
+    // decide how many songs we need to consider, if size = 0, means we need to consider all data
     if (size != 0) {
       total = mostPopularSongs(size).length;
       songs = mostPopularSongs(size);
@@ -171,9 +171,10 @@ public class LocalQueryEngine implements Query {
       total = allSongs().length;
       songs = allSongs();
     }
+    // start building the colisten map
     for (int i = 0; i < songs.length; i++) {
       for (int j = 0; j < songs.length; j++) {
-        if (i <= j) {
+        if (i <= j) { // only need to store half of the matrix
           continue;
         }
         List<String> song1Audience = Arrays.asList(getListenersOf(songs[i]));
@@ -190,6 +191,54 @@ public class LocalQueryEngine implements Query {
       }
     }
     return colistenedMatrix;
+  }
+  
+  private void buildColistenedFromTripletFile(String tripletFilePath) throws IOException {
+    BufferedReader br = new BufferedReader(new FileReader(new File(tripletFilePath)));
+    String lastUserId = null;
+    String line = br.readLine();
+    List<String> songsId = Lists.newArrayList();
+    songsId.add(line.split("\\s+")[1]);
+    while ((line = br.readLine()) != null) {
+      if (line.split("\\s+")[1].equals(lastUserId)) {
+        songsId.add(line.split("\\s+")[1]);  
+      } else {
+        for (Integer[] songIdPair : getCombinationsOf(songsId)) {
+          if (colistenedMap.containsKey(songIdPair[0] + "-" + songIdPair[1])) {
+            colistenedMap.put(songIdPair[0] + "-" + songIdPair[1], colistenedMap.get(songIdPair[0] + "-" + songIdPair[1]) + 1);
+          } else if (colistenedMap.containsKey(songIdPair[1] + "-" + songIdPair[0])) {
+            colistenedMap.put(songIdPair[1] + "-" + songIdPair[0], colistenedMap.get(songIdPair[1] + "-" + songIdPair[0]) + 1);
+          } else {
+            colistenedMap.put(songIdPair[0] + "-" + songIdPair[1], 1);
+          }
+        }
+      }
+      lastUserId = line.split("\\s+")[0];
+    }
+  }
+
+  /**
+   * TODO : need test
+   * e.g the input is [1,2,3], this method should return [1,2] [1,3] [2,3]
+   *     the input is [1,2,3,4,5], this method should return [1,2] [1,3] [1,4] [1,5] [2,3] [2,4] [2,5] [3,4] [3,5] [4,5]
+   * @param songsId
+   * @return
+   */
+  protected List<Integer[]> getCombinationsOf(List<String> songsId) {
+    if (songsId.size() == 0) return Lists.newArrayList();
+    List<Integer[]> result = Lists.newArrayList();
+    int start = 0;
+    int end = 1;
+    while (start < (songsId.size() - 1)) {
+      while (end < (songsId.size())) {
+        Integer[] pair = { Integer.valueOf(songsId.get(start)), Integer.valueOf(songsId.get(end)) };
+        result.add(pair);
+        end++;
+      }
+      start++;
+      end = start + 1;
+    }
+    return result;
   }
 
 //  private double roundTwoDecimals(double d) {
