@@ -1,11 +1,8 @@
 package org.zhengyang.kaggle.query;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -14,8 +11,12 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
-import org.zhengyang.kaggle.inject.JedisTestCFModule;
+import org.zhengyang.kaggle.distributed.Constants;
+import org.zhengyang.kaggle.distributed.JedisConnector;
+import org.zhengyang.kaggle.inject.DistributedCFModule;
 import org.zhengyang.kaggle.utils.Utils;
+
+import redis.clients.jedis.Jedis;
 
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -25,6 +26,7 @@ import com.google.inject.internal.util.Lists;
 
 /**
  * The class simplely load all the data into memory as maps and sets.
+ * The class assumes that the colistened matrix has already been loaded into Redis.
  * @author Zhengyang
  *
  */
@@ -47,15 +49,15 @@ public class LocalQueryEngine implements Query {
   protected Set<String>               allUsers         = Sets.newHashSet();
   // save most popular songs in memory to make the query faster
   protected List<String>              mostPopular              = Lists.newArrayList();
-  private int                         sizeOfColistenedMatrix   = 1000;
+  
   /**
    * Special attention, the matrix only store non-zero elements. The key for this matrix is songId1 + songId2.
    */
   protected Map<String, Integer>  colistenedMap        = Maps.newHashMap();
   private boolean                     started          = false;
   private String trainingDataPath                      = null;
-  private String colistenedMatrixFilePath              = null;
   private String songIndexFilePath                     = null;
+  private JedisConnector jedis;
   
   /**
    * 
@@ -65,14 +67,17 @@ public class LocalQueryEngine implements Query {
    * @param songIndexFilePath
    */
   @Inject
-  public LocalQueryEngine(String tripletPath, 
-      String colistenedMatrixFilePath, 
-      int sizeOfColistenedMatrix, 
-      String songIndexFilePath) {
-    this.trainingDataPath = tripletPath;
-    this.colistenedMatrixFilePath = colistenedMatrixFilePath;
-    this.sizeOfColistenedMatrix = sizeOfColistenedMatrix;
+  public LocalQueryEngine(
+      String tripletPath, 
+      String songIndexFilePath, 
+      JedisConnector jedis) {
+    this.trainingDataPath  = tripletPath;
     this.songIndexFilePath = songIndexFilePath;
+    this.jedis             = jedis;
+  }
+  
+  private Jedis jedis() {
+    return jedis.jedis();
   }
   
   public void start() throws IOException {
@@ -97,9 +102,7 @@ public class LocalQueryEngine implements Query {
     }
     // build songIndexMap    
     logger.info("Building songIndexMap...");
-    buildSongIndexMap(songIndexFilePath);
-    // build song song matrix
-    buildColistenedMap(colistenedMatrixFilePath);    
+    buildSongIndexMap(songIndexFilePath);   
     started = true;
     logger.info("Local query engine started.");
     logger.info("Songs number: " + allSongs.size());
@@ -116,135 +119,6 @@ public class LocalQueryEngine implements Query {
     }
     br.close();
   }
-
-  /**
-   * Because this is a REALLY TIME CONSUMING process, I need to save the result somewhere.
-   * @param filePath
-   * @throws IOException 
-   */
-  private void buildColistenedMap(String filePath) throws IOException {
-    logger.info("Trying to find the co-listened matrix fils in " + "\"" + filePath + "\"");
-    try {
-      BufferedReader br = new BufferedReader(new FileReader(new File(filePath)));
-      String line = null;
-      while ((line = br.readLine()) != null) {
-        colistenedMap.put(line.split("\\s+")[0], Integer.valueOf(line.split("\\s+")[1]));
-      }
-      logger.info("Colistened matrix loaded successfully. Size: " + colistenedMap.size());
-      return;
-    } catch (FileNotFoundException e) {
-      logger.info("The file for co-listened matrix cannot be found, will build a new one.");
-    }
-    logger.info("Start building the co-listened matrix...");
-    colistenedMap = buildColistenedMap(sizeOfColistenedMatrix);
-    logger.info("Finished building the co-listened matrix. Size: " + colistenedMap.size());
-    logger.info("Saving co-listened matrix to file: \"" + filePath + "\"");
-    saveColistenedMap(colistenedMap, filePath);
-    logger.info("Saved.");
-  }
-  
-  private void saveColistenedMap(Map<String, Integer> songSongMatrix, String filePath) throws IOException {
-    BufferedWriter bw = new BufferedWriter(new FileWriter(new File(filePath)));
-    for (String k : songSongMatrix.keySet()) {
-      bw.write(k + " " + songSongMatrix.get(k) + "\n"); 
-    }
-    bw.close();
-  }
-
-  // TODO : It takes too long!!!
-  // !!Solution!! Only calculate the similarity between most popular N songs!! For other songs.
-  /**
-   * This method is NOT thread-safe, it should be called only once.
-   * @param size 0 means for all songs
-   * @return
-   */
-  private Map<String, Integer> buildColistenedMap(int size) {
-    Map<String, Integer> colistenedMatrix = Maps.newHashMap();
-    long count = 0;
-    long total = 0;
-    String[] songs = null;
-    // decide how many songs we need to consider, if size = 0, means we need to consider all data
-    if (size != 0) {
-      total = mostPopularSongs(size).length;
-      songs = mostPopularSongs(size);
-    } else {
-      total = allSongs().length;
-      songs = allSongs();
-    }
-    // start building the colisten map
-    for (int i = 0; i < songs.length; i++) {
-      for (int j = 0; j < songs.length; j++) {
-        if (i <= j) { // only need to store half of the matrix
-          continue;
-        }
-        List<String> song1Audience = Arrays.asList(getListenersOf(songs[i]));
-        List<String> song2Audience = Arrays.asList(getListenersOf(songs[j]));
-        List<String> common = Lists.newArrayList(song1Audience);
-        common.retainAll(song2Audience);
-        if (common.size() != 0) {
-          colistenedMatrix.put(allSongs()[i] + "-" + allSongs()[j], common.size());
-        }
-      }
-      count ++;
-      if (count % 10 == 0) {
-        logger.info("" + count +  "/" + total + " finished");
-      }
-    }
-    return colistenedMatrix;
-  }
-  
-  private void buildColistenedFromTripletFile(String tripletFilePath) throws IOException {
-    BufferedReader br = new BufferedReader(new FileReader(new File(tripletFilePath)));
-    String lastUserId = null;
-    String line = br.readLine();
-    List<String> songsId = Lists.newArrayList();
-    songsId.add(line.split("\\s+")[1]);
-    while ((line = br.readLine()) != null) {
-      if (line.split("\\s+")[1].equals(lastUserId)) {
-        songsId.add(line.split("\\s+")[1]);  
-      } else {
-        for (Integer[] songIdPair : getCombinationsOf(songsId)) {
-          if (colistenedMap.containsKey(songIdPair[0] + "-" + songIdPair[1])) {
-            colistenedMap.put(songIdPair[0] + "-" + songIdPair[1], colistenedMap.get(songIdPair[0] + "-" + songIdPair[1]) + 1);
-          } else if (colistenedMap.containsKey(songIdPair[1] + "-" + songIdPair[0])) {
-            colistenedMap.put(songIdPair[1] + "-" + songIdPair[0], colistenedMap.get(songIdPair[1] + "-" + songIdPair[0]) + 1);
-          } else {
-            colistenedMap.put(songIdPair[0] + "-" + songIdPair[1], 1);
-          }
-        }
-      }
-      lastUserId = line.split("\\s+")[0];
-    }
-  }
-
-  /**
-   * TODO : need test
-   * e.g the input is [1,2,3], this method should return [1,2] [1,3] [2,3]
-   *     the input is [1,2,3,4,5], this method should return [1,2] [1,3] [1,4] [1,5] [2,3] [2,4] [2,5] [3,4] [3,5] [4,5]
-   * @param songsId
-   * @return
-   */
-  protected List<Integer[]> getCombinationsOf(List<String> songsId) {
-    if (songsId.size() == 0) return Lists.newArrayList();
-    List<Integer[]> result = Lists.newArrayList();
-    int start = 0;
-    int end = 1;
-    while (start < (songsId.size() - 1)) {
-      while (end < (songsId.size())) {
-        Integer[] pair = { Integer.valueOf(songsId.get(start)), Integer.valueOf(songsId.get(end)) };
-        result.add(pair);
-        end++;
-      }
-      start++;
-      end = start + 1;
-    }
-    return result;
-  }
-
-//  private double roundTwoDecimals(double d) {
-//    DecimalFormat twoDForm = new DecimalFormat("#.##");
-//    return Double.valueOf(twoDForm.format(d));
-//  }
 
   public boolean hasStarted() {
     return started;
@@ -347,13 +221,12 @@ public class LocalQueryEngine implements Query {
   }
 
   public long numberOfCommonAudience(String song1, String song2) {
-    if (colistenedMap.containsKey(song1 + "-" + song2)) {
-      return colistenedMap.get(song1 + "-" + song2);
-    } else if (colistenedMap.containsKey(song2 + "-" + song1)) {
-      return colistenedMap.get(song2 + "-" + song1);
-    } else {
-      return 0;
-    }    
+    if (!(jedis().hget(Constants.COLISTENED_HASH, song1 + "-" + song2) == null)) {
+      return Long.valueOf(jedis().hget(Constants.COLISTENED_HASH, song1 + "-" + song2));
+    } else if (!(jedis().hget(Constants.COLISTENED_HASH, song2 + "-" + song1) == null)) {
+      return Long.valueOf(jedis().hget(Constants.COLISTENED_HASH, song2 + "-" + song1));
+    }
+    return 0;
   }
   
   public int getIntegerIdOfSong(String hashTag) {
@@ -365,7 +238,6 @@ public class LocalQueryEngine implements Query {
   }
   
   public static void main(String[] args) throws IOException {
-    Query q = Guice.createInjector(new JedisTestCFModule()).getInstance(Query.class);
-    System.out.println("Most popular song has " + q.getListenersOf(q.mostPopularSongs(1)[0]).length + " listeners.");
+//    Query q = Guice.createInjector(new DistributedCFModule()).getInstance(Query.class);
   }
 }

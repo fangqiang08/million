@@ -6,7 +6,7 @@ import java.io.FileReader;
 import java.io.IOException;
 
 import org.apache.log4j.Logger;
-import org.zhengyang.kaggle.inject.JedisTestCFModule;
+import org.zhengyang.kaggle.inject.DistributedCFModule;
 import org.zhengyang.kaggle.query.Query;
 
 import com.google.inject.Guice;
@@ -75,7 +75,7 @@ public class ValidationUtil {
   }
   
   public static void main(String[] args) throws IOException {
-    ValidationUtil validateUtil = Guice.createInjector(new JedisTestCFModule()).getInstance(ValidationUtil.class);
+    ValidationUtil validateUtil = Guice.createInjector(new DistributedCFModule()).getInstance(ValidationUtil.class);
     int errorCount = validateUtil.validatePopSongs("data/shared/popularSongs.txt");
 //    int errorCount = validateUtil.validatePopSongsWithListenedNum("data/shared/song_num_popularity_sorted.txt");
     System.out.println("Are they the same? " + (errorCount == 0 ? "Yes" : "No"));

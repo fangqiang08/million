@@ -4,7 +4,7 @@ import java.io.IOException;
 import java.util.List;
 
 import org.apache.log4j.Logger;
-import org.zhengyang.kaggle.inject.JedisTestCFModule;
+import org.zhengyang.kaggle.inject.DistributedCFModule;
 import org.zhengyang.kaggle.utils.DistributedUtil;
 
 import com.google.inject.Guice;
@@ -13,7 +13,7 @@ import com.google.inject.internal.util.Lists;
 
 public class App {
   static Logger logger = Logger.getLogger(App.class);
-  Injector injector = Guice.createInjector(new JedisTestCFModule());
+  Injector injector = Guice.createInjector(new DistributedCFModule());
   
   private int workQSize = 20;
   private int masterInterval = 2000;

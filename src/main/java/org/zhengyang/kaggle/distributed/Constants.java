@@ -12,4 +12,6 @@ public final class Constants {
   public static String MESSAGE_Q = "MESSAGE_Q";
   public static String COMMAND_Q = "COMMAND_Q";
   public static String RESULT_HASH = "RESULT_HASH";
+  
+  public static String COLISTENED_HASH = "COLISTENED_HASH";
 }

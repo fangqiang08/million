@@ -12,7 +12,7 @@ import java.util.Map;
 import org.apache.log4j.Logger;
 import org.zhengyang.kaggle.distributed.Constants;
 import org.zhengyang.kaggle.distributed.JedisConnector;
-import org.zhengyang.kaggle.inject.JedisTestCFModule;
+import org.zhengyang.kaggle.inject.DistributedCFModule;
 
 import com.google.common.base.Joiner;
 import com.google.inject.Guice;
@@ -77,7 +77,7 @@ public class SubmissionUtil {
   }
   
   public static void main(String[] args) throws IOException {
-    SubmissionUtil util = Guice.createInjector(new JedisTestCFModule()).getInstance(SubmissionUtil.class);
+    SubmissionUtil util = Guice.createInjector(new DistributedCFModule()).getInstance(SubmissionUtil.class);
     util.init("data/kaggle_songs.txt", "data/kaggle_users.txt");
     util.generateResult("data/20120702/result.csv");
   }

@@ -5,7 +5,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.log4j.Logger;
-import org.zhengyang.kaggle.inject.JedisTestCFModule;
+import org.zhengyang.kaggle.inject.DistributedCFModule;
 import org.zhengyang.kaggle.io.OutputFormatter;
 import org.zhengyang.kaggle.prediction.PredictionVal;
 import org.zhengyang.kaggle.query.Query;
@@ -105,7 +105,7 @@ public class Worker implements Runnable {
   }
 
   public static void main(String[] args) {
-    Worker w = Guice.createInjector(new JedisTestCFModule()).getInstance(Worker.class);
+    Worker w = Guice.createInjector(new DistributedCFModule()).getInstance(Worker.class);
     w.setNumberOfPopSongs(3);
     w.setNumberOfSongRecommended(2);
     w.action();

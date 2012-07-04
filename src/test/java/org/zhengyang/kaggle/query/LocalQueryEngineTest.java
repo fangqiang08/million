@@ -5,17 +5,19 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.List;
 
 import org.junit.Test;
+import org.zhengyang.kaggle.distributed.JedisConnector;
+import org.zhengyang.kaggle.inject.DistributedCFModule;
 
-import com.google.inject.internal.util.Lists;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
 
 public class LocalQueryEngineTest {
-  
+  Injector injector = Guice.createInjector(new DistributedCFModule());
   String testFilePath = "data/tiny_triplets.txt";
   String testColistenedMatrixFilePath = "data/tiny_triplets_colistened.txt";
-  LocalQueryEngine localQueryEngine = new LocalQueryEngine(testFilePath, testColistenedMatrixFilePath, 5, "data/origin/kaggle_songs.txt");
+  LocalQueryEngine localQueryEngine = new LocalQueryEngine(testFilePath, "data/origin/kaggle_songs.txt", injector.getInstance(JedisConnector.class));
 
   @Test
   public void testStart() throws IOException {

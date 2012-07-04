@@ -4,7 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.apache.log4j.Logger;
-import org.zhengyang.kaggle.inject.JedisTestCFModule;
+import org.zhengyang.kaggle.inject.DistributedCFModule;
 import org.zhengyang.kaggle.query.Query;
 
 import com.google.inject.Guice;
@@ -126,7 +126,7 @@ public class Master {
   }
   
   public static void main(String[] args) throws InterruptedException {
-    Master m = Guice.createInjector(new JedisTestCFModule()).getInstance(Master.class);
+    Master m = Guice.createInjector(new DistributedCFModule()).getInstance(Master.class);
     m.setWorkQSize(5);
     m.setInterval(2000);
     m.clearAllQueues();
