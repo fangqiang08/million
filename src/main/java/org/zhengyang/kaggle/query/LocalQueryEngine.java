@@ -14,6 +14,7 @@ import org.apache.log4j.Logger;
 import org.zhengyang.kaggle.distributed.Constants;
 import org.zhengyang.kaggle.distributed.JedisConnector;
 import org.zhengyang.kaggle.inject.DistributedCFModule;
+import org.zhengyang.kaggle.utils.DataUtil;
 import org.zhengyang.kaggle.utils.Utils;
 
 import redis.clients.jedis.Jedis;
@@ -26,7 +27,6 @@ import com.google.inject.internal.util.Lists;
 
 /**
  * The class simplely load all the data into memory as maps and sets.
- * The class assumes that the colistened matrix has already been loaded into Redis.
  * @author Zhengyang
  *
  */
@@ -37,18 +37,18 @@ public class LocalQueryEngine implements Query {
   
   protected Map<String, Set<String>> songUserMap      = Maps.newHashMap();
   protected Map<String, Set<String>> userSongMap      = Maps.newHashMap();
-  // maps <userId, songId> pair to the number of songs that has been listened by
-  // the user
-  // the key is userId + songId
+  // maps <userId, songId> pair to the number of songs that has been listened by the user
+  // the key is userId - songId
   protected Map<String, Integer>      userSongCountMap = Maps.newHashMap();
   // save all songs as a set in memory, so make hasNotListened() function faster
-  protected Set<String>               allSongs         = Sets.newHashSet();
   protected Map<String, Integer>      songIndexMap     = Maps.newHashMap();
   protected Map<Integer, String>      indexSongMap     = Maps.newHashMap();
   // save all users in memory to make the query faster
   protected Set<String>               allUsers         = Sets.newHashSet();
   // save most popular songs in memory to make the query faster
-  protected List<String>              mostPopular              = Lists.newArrayList();
+  protected Map<String, Integer>      songsPopularityMap;
+  protected String[]                  songsSortedByPopularity;
+  
   
   /**
    * Special attention, the matrix only store non-zero elements. The key for this matrix is songId1 + songId2.
@@ -58,6 +58,8 @@ public class LocalQueryEngine implements Query {
   private String trainingDataPath                      = null;
   private String songIndexFilePath                     = null;
   private JedisConnector jedis;
+  private String colistenedFilePath;
+  private String songsByPopularityFilePath;
   
   /**
    * 
@@ -70,10 +72,14 @@ public class LocalQueryEngine implements Query {
   public LocalQueryEngine(
       String tripletPath, 
       String songIndexFilePath, 
+      String colistenedFilePath,
+      String songsByPopularityFilePath,
       JedisConnector jedis) {
-    this.trainingDataPath  = tripletPath;
-    this.songIndexFilePath = songIndexFilePath;
-    this.jedis             = jedis;
+    this.trainingDataPath          = tripletPath;
+    this.songIndexFilePath         = songIndexFilePath;
+    this.colistenedFilePath        = colistenedFilePath;
+    this.songsByPopularityFilePath = songsByPopularityFilePath;
+    this.jedis                     = jedis;
   }
   
   private Jedis jedis() {
@@ -94,23 +100,32 @@ public class LocalQueryEngine implements Query {
       // add entry to userSongMap    
       addEntryToUserSongMap(userId, songId);
       // add entry to userSongCountMap     
-      userSongCountMap.put(userId + songId, count);
-      // add song to the allSongs set 
-      allSongs.add(songId);
+      userSongCountMap.put(userId + "-" + songId, count);
       // add user to allUsers set      
       allUsers.add(userId);     
-    }
-    // build songIndexMap    
-    logger.info("Building songIndexMap...");
-    buildSongIndexMap(songIndexFilePath);   
+    }  
+    buildSongIndexMap(songIndexFilePath);
+    loadSongsByPopularity(songsByPopularityFilePath);
+    loadColistenedMap(colistenedFilePath);
     started = true;
-    logger.info("Local query engine started.");
-    logger.info("Songs number: " + allSongs.size());
+    logger.info("Local query engine has started!");
+    logger.info("Songs number: " + songsPopularityMap.size());
     logger.info("Users number: " + allUsers.size());
     sb.close();
   } 
 
+  private void loadSongsByPopularity(String songsByPopularityFilePath) throws IOException {
+    logger.info("Start loading songs' popularity file...");
+    songsPopularityMap      = DataUtil.getSongsByPopularity(songsByPopularityFilePath);
+    songsSortedByPopularity = Utils.getSortedKeys(songsPopularityMap);
+  }
+
+  private void loadColistenedMap(String colistenedFilePath) throws IOException {
+    colistenedMap = DataUtil.loadColistenedFile(colistenedFilePath);
+  }
+
   private void buildSongIndexMap(String songIndexFilePath) throws IOException {
+    logger.info("Start building songIndexMap...");
     BufferedReader br = new BufferedReader(new FileReader(new File(songIndexFilePath)));
     String line = null;
     while ((line = br.readLine()) != null) {
@@ -128,11 +143,11 @@ public class LocalQueryEngine implements Query {
    * Clear all buffers
    */
   public void close() {
-    songUserMap      = Maps.newHashMap();
-    userSongMap      = Maps.newHashMap();
-    userSongCountMap = Maps.newHashMap();
-    allSongs         = Sets.newHashSet();
-    allUsers         = Sets.newHashSet();
+    songUserMap        = Maps.newHashMap();
+    userSongMap        = Maps.newHashMap();
+    userSongCountMap   = Maps.newHashMap();
+    songsPopularityMap = Maps.newHashMap();
+    allUsers           = Sets.newHashSet();
   }
 
   private void addEntryToUserSongMap(String userId, String songId) {
@@ -154,7 +169,7 @@ public class LocalQueryEngine implements Query {
   }
 
   public String[] hasNotListened(String userId) {
-    Set<String> temp = Sets.newHashSet(allSongs);
+    Set<String> temp = Sets.newHashSet(allSongs());
     temp.removeAll(userSongMap.get(userId));
     return temp.toArray(new String[0]);
   }
@@ -164,19 +179,7 @@ public class LocalQueryEngine implements Query {
    * So there is no need to optimize it.
    */
   public String[] mostPopularSongs(int numOfPopSongs) {
-    if (mostPopular.size() >= numOfPopSongs) {
-      return Arrays.copyOf(mostPopular.toArray(new String[0]), numOfPopSongs);
-    }
-    logger.info("Calculating top " + numOfPopSongs + " songs...");
-    Map<String, Integer> songCountMap = Maps.newHashMap();
-    for (String songId : allSongs) {
-      songCountMap.put(songId, songUserMap.get(songId).size());
-    }
-    String[] sortedKeys = Utils.getSortedKeys(songCountMap);
-    int length = sortedKeys.length < numOfPopSongs ? sortedKeys.length : numOfPopSongs;
-    mostPopular = Arrays.asList(Arrays.copyOf(sortedKeys, length));
-    logger.info("Finished calculating, get " + mostPopular.size() + " songs...");
-    return mostPopular.toArray(new String[0]);
+    return Arrays.copyOf(songsSortedByPopularity, numOfPopSongs);
   }
 
   public String[] getListenersOf(String songId) {
@@ -188,7 +191,7 @@ public class LocalQueryEngine implements Query {
   }
   
   public String[] allSongs() {
-    return allSongs.toArray(new String[0]);
+    return songsPopularityMap.keySet().toArray(new String[0]);
   }
 
   public String[] listenedSongs(String userId) {
@@ -202,7 +205,7 @@ public class LocalQueryEngine implements Query {
   public double getRating(String userId, String songId) {
     // TODO : get a nice formula to calculate the rating of a song, and maybe make a separate class for this function
     if (userSongMap.get(userId).contains(songId)) {
-      int count = userSongCountMap.get(userId + songId);
+      int count = userSongCountMap.get(userId + "-" + songId);
       return 1 + count * 0.1;
     }
     return 0.0;
@@ -221,10 +224,12 @@ public class LocalQueryEngine implements Query {
   }
 
   public long numberOfCommonAudience(String song1, String song2) {
-    if (!(jedis().hget(Constants.COLISTENED_HASH, song1 + "-" + song2) == null)) {
-      return Long.valueOf(jedis().hget(Constants.COLISTENED_HASH, song1 + "-" + song2));
-    } else if (!(jedis().hget(Constants.COLISTENED_HASH, song2 + "-" + song1) == null)) {
-      return Long.valueOf(jedis().hget(Constants.COLISTENED_HASH, song2 + "-" + song1));
+    int song1id = getIntegerIdOfSong(song1);
+    int song2id = getIntegerIdOfSong(song2);
+    if (colistenedMap.containsKey(song1id + "-" + song2id)) {
+      return colistenedMap.get(song1id + "-" + song2id);
+    } else if (!colistenedMap.containsKey(song2id + "-" + song1id)) {
+      return colistenedMap.get(song2id + "-" + song1id);
     }
     return 0;
   }
@@ -238,6 +243,6 @@ public class LocalQueryEngine implements Query {
   }
   
   public static void main(String[] args) throws IOException {
-//    Query q = Guice.createInjector(new DistributedCFModule()).getInstance(Query.class);
+    Query q = Guice.createInjector(new DistributedCFModule()).getInstance(Query.class);
   }
 }

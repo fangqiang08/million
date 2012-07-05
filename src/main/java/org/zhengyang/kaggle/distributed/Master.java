@@ -1,11 +1,15 @@
 package org.zhengyang.kaggle.distributed;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
 import org.apache.log4j.Logger;
 import org.zhengyang.kaggle.inject.DistributedCFModule;
-import org.zhengyang.kaggle.query.Query;
 
 import com.google.inject.Guice;
 import com.google.inject.Inject;
@@ -24,14 +28,15 @@ import com.google.inject.internal.util.Lists;
 public class Master {
   static Logger logger = Logger.getLogger(Master.class);
   
-  private Query queryEngine;
   private JedisConnector jedisConnector;
   public long workQSize = 500;  
-  public long interval = 2000;
+  public long interval  = 2000;
+  private List<String> allUsers = Lists.newArrayList();
+  private String allUserFilePath;
   
   @Inject
-  public Master(Query queryEngine, JedisConnector jedisConnector) {
-    this.queryEngine = queryEngine;
+  public Master(String allUserFilePath, JedisConnector jedisConnector) {
+    this.allUserFilePath = allUserFilePath;
     this.jedisConnector = jedisConnector;
   }
   
@@ -43,10 +48,16 @@ public class Master {
     this.interval = interval;
   }
   
-  public void init() {
+  public void init() throws IOException {
+    BufferedReader br = new BufferedReader(new FileReader(new File(allUserFilePath)));
+    String line = null;
+    while ((line = br.readLine()) != null) {
+      allUsers.add(line);
+    }
+    br.close();
     // keep all tasks in TASK_RECORD_Q and ALL_TASK_Q
-    logger.debug("Pushing " + queryEngine.allUsers().length + " tasks into TASK_RECORD_Q and REMAINING_TASK_Q");
-    for (String uid : queryEngine.allUsers()) {
+    logger.debug("Pushing " + allUsers.size() + " tasks into TASK_RECORD_Q and REMAINING_TASK_Q");
+    for (String uid : allUsers) {
       jedisConnector.jedis().lpush(Constants.TASK_RECORD_Q, uid);
       jedisConnector.jedis().lpush(Constants.REMAINING_TASK_Q, uid);
     }
@@ -70,7 +81,7 @@ public class Master {
     run();
     while (!validate()) {
       List<String> unhandledTasks = Lists.newArrayList();
-      unhandledTasks.addAll(Arrays.asList(queryEngine.allUsers()));
+      unhandledTasks.addAll(allUsers);
       List<String> finishedTaskKeys = jedisConnector.jedis().lrange(Constants.RESULT_KEY_Q, 0, -1);
       unhandledTasks.removeAll(finishedTaskKeys);
       logger.info("There are " + unhandledTasks.size() + " task(s) failed, adding them back to REMAINING_WORK_Q");
@@ -125,7 +136,7 @@ public class Master {
     return numOfResult == numOfRecord;
   }
   
-  public static void main(String[] args) throws InterruptedException {
+  public static void main(String[] args) throws InterruptedException, IOException {
     Master m = Guice.createInjector(new DistributedCFModule()).getInstance(Master.class);
     m.setWorkQSize(5);
     m.setInterval(2000);

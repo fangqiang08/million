@@ -50,7 +50,7 @@ public class Worker implements Runnable {
     numberOfSongRecommended = number;
   }
   
-  public void action() {
+  public void action() throws InterruptedException {
     logger.info("Worker has started to listen to the WORKING_Q");
     while (!stop) {
       String command = jedisConnector.jedis().lpop(Constants.COMMAND_Q);
@@ -67,10 +67,20 @@ public class Worker implements Runnable {
       }
       String result = outputFormatter.formatRecommendation(recommendations);
       logger.info("Finished recommending " + recommendations.length  + " songs for user: " + userId + ", saving it to database");;
-      jedisConnector.jedis().lpush(Constants.RESULT_KEY_Q, userId);
-      jedisConnector.jedis().hset(Constants.RESULT_HASH, userId, result);
+      saveResult(userId, result);
     }
     logger.info("Worker stopped.");
+  }
+
+  private void saveResult(String userId, String result) throws InterruptedException {
+    try {
+      jedisConnector.jedis().lpush(Constants.RESULT_KEY_Q, userId);
+      jedisConnector.jedis().hset(Constants.RESULT_HASH, userId, result);
+    } catch (Exception e) {
+      logger.info("An exception happened while trying to save result to redis, will try after 1 sec.");
+      Thread.sleep(1000);
+      saveResult(userId, result);
+    }
   }
 
   private String[] getRecommendationsWithPopSongs(String[] recommendations, int numberOfSongRecommended) {
@@ -99,12 +109,11 @@ public class Worker implements Runnable {
       double score = predictionValCalculator.getPredictionVal(userId, song);        
       songScoreMap.put(song, score);
     }
-    // TODO : a bug here, recommendation array has a lot of null values
     String[] recommendation = Utils.getTopElementsOf(Utils.getSortedKeys(songScoreMap), numberOfSongRecommended);
     return recommendation;
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws InterruptedException {
     Worker w = Guice.createInjector(new DistributedCFModule()).getInstance(Worker.class);
     w.setNumberOfPopSongs(3);
     w.setNumberOfSongRecommended(2);
@@ -112,6 +121,10 @@ public class Worker implements Runnable {
   }
 
   public void run() {
-    action();
+    try {
+      action();
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
   }
 }
